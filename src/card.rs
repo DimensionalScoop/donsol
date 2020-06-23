@@ -1,6 +1,6 @@
 use std::string::ToString;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, PartialOrd, Eq, PartialEq, Ord, Debug)]
 pub struct Card {
     suit: Suit,
     face: Face,
@@ -76,27 +76,28 @@ impl Card {
     pub fn generate_donsol_deck() -> Vec<Card> {
         let mut pile = Vec::with_capacity(52);
 
-        for suit in &[Suit::Clubs,Suit::Spades,Suit::Hearts,Suit::Diamonds]{
+        let mut all_faces = Vec::with_capacity(13);
+        for n in 2..11 {
+            all_faces.push(Face::Number(n));
+        }
+        all_faces.push(Face::Jack);
+        all_faces.push(Face::Queen);
+        all_faces.push(Face::King);
+        all_faces.push(Face::Ace);
+
+        for suit in &[Suit::Clubs, Suit::Spades, Suit::Hearts, Suit::Diamonds] {
             let values_of_suit = match suit {
                 Suit::Clubs | Suit::Spades => [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 16, 18],
                 Suit::Hearts | Suit::Diamonds => [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 11, 11, 11],
-                Suit::Blank => panic!("this is handled blow??")
+                Suit::Blank => panic!("this is handled blow??"),
             };
 
-            for value in &values_of_suit {
-                let face = match value {
-                    18 => Face::Ace,
-                    15 => Face::King,
-                    13 => Face::Queen,
-                    11 => Face::Jack,
-                    2..=10 => Face::Number(*value),
-                    _ => panic!("not a valid Donsol card value")
-                };
-
-                let card = Card{
-                    suit:*suit,
-                    value:*value,
-                    face
+            let both = values_of_suit.iter().zip(all_faces.iter());
+            for (value, face) in both {
+                let card = Card {
+                    suit: *suit,
+                    value: *value,
+                    face: face.clone(),
                 };
                 pile.push(card)
             }
@@ -110,12 +111,11 @@ impl Card {
         pile.push(donsol.clone());
         pile.push(donsol);
 
-        assert_eq!(pile.len(), 52);
         pile
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, PartialOrd, Eq, PartialEq, Ord, Debug)]
 enum Face {
     Number(usize),
     Jack,
@@ -138,11 +138,66 @@ impl ToString for Face {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, PartialOrd, Eq, PartialEq, Ord, Clone, Debug)]
 pub enum Suit {
     Hearts,
     Diamonds,
     Clubs,
     Spades,
     Blank, // Only Jokers are blank
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn card_names() {
+        let card = Card {
+            suit: Suit::Hearts,
+            face: Face::King,
+            value: 18,
+        };
+        assert_eq!(card.name(), "White Mage".to_string());
+
+        let card = Card {
+            suit: Suit::Spades,
+            face: Face::King,
+            value: 18,
+        };
+        assert_eq!(card.name(), "Regnant".to_string());
+
+        let card = Card {
+            suit: Suit::Spades,
+            face: Face::Number(3),
+            value: 3,
+        };
+        assert_eq!(card.name(), "Rustacean".to_string());
+
+        let card = Card {
+            suit: Suit::Diamonds,
+            face: Face::Number(5),
+            value: 5,
+        };
+        assert_eq!(card.name(), "Medium Shield".to_string());
+    }
+
+    #[test]
+    fn donsol_deck() {
+        let mut deck = Card::generate_donsol_deck();
+
+        // should be a whole deck
+        assert_eq!(deck.len(), 54);
+
+        // every card should be named
+        for c in &deck {
+            assert_ne!(c.name(), "")
+        }
+
+        // only the Joker should occur twice
+        // every other card should be unique
+        deck.sort_unstable();
+        deck.dedup();
+        assert_eq!(deck.len(), 53);
+    }
 }
